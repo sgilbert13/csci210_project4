@@ -190,7 +190,7 @@ sendmsg(uName, user, message);
 	strcpy(path,cmd);
 	strcpy(cargv[0],cmd);
 
-	char *attrToken = strtok(line2," "); /* skip cargv[0] which is completed already */
+	char *attrToken = strtok(line2," "); 
 	attrToken = strtok(NULL, " ");
 	int n = 1;
 	while (attrToken!=NULL) {
