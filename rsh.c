@@ -30,12 +30,24 @@ void sendmsg (char *user, char *target, char *msg) {
 	// TODO:
 	// Send a request to the server to send the message (msg) to the target user (target)
 	// by creating the message structure and writing it to server's FIFO
-	struct message message;
-	strcpy(message.source, user);
-	strcpy(message.target, target);
-	strcpy(message.msg, msg);
-	int server = open("serverFIFO", O_WRONLY);
-	write(server, &message, sizeof(message));
+	struct message message = {0}; // Initialize structure with zeros
+snprintf(message.source, sizeof(message.source), "%s", user);
+snprintf(message.target, sizeof(message.target), "%s", target);
+snprintf(message.msg, sizeof(message.msg), "%s", msg);
+
+int server = open("serverFIFO", O_WRONLY);
+if (server == -1) {
+    perror("Error opening serverFIFO");
+    exit(EXIT_FAILURE);
+}
+
+if (write(server, &message, sizeof(message)) == -1) {
+    perror("Error writing to serverFIFO");
+    close(server);
+    exit(EXIT_FAILURE);
+}
+
+close(server);
 }
 
 void* messageListener(void *arg) {
@@ -47,13 +59,35 @@ void* messageListener(void *arg) {
 	// Incoming message from [source]: [message]
 	// put an end of line at the end of the message
 	int user = open(uName, O_RDONLY);
-	struct message msg;
-	while(1){
-		ssize_t bytesRead = read(user, &msg, sizeof(msg));
-		if(bytesRead > 0){
-			printf("Incoming message from %s: %s\n", msg.source, msg.msg);
-		}
-	}
+if (user == -1) {
+    perror("Error opening user FIFO");
+    exit(EXIT_FAILURE);
+}
+
+struct message msg;
+while (1) {
+    ssize_t bytesRead = read(user, &msg, sizeof(msg));
+
+    if (bytesRead == -1) {
+        perror("Error reading from user FIFO");
+        close(user);
+        exit(EXIT_FAILURE);
+    } else if (bytesRead == 0) {
+        // End of file (EOF) or no data available
+        continue;
+    }
+
+    // Ensure only fully read messages are processed
+    if (bytesRead == sizeof(msg)) {
+        printf("Incoming message from %s: %s\n", msg.source, msg.msg);
+    } else {
+        fprintf(stderr, "Partial message read, ignoring...\n");
+    }
+}
+
+// Cleanup (though unreachable in this case since the loop is infinite)
+close(user);
+
 
 	pthread_exit((void*)0);
 }
@@ -87,7 +121,20 @@ int main(int argc, char **argv) {
     // TODO:
     // create the message listener thread
 	pthread_t listener_thread;
-	pthread_create(&listener_thread, NULL, messageListener, NULL);
+pthread_attr_t attr;
+
+// Initialize thread attributes
+pthread_attr_init(&attr);
+pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+
+// Create the detached thread
+if (pthread_create(&listener_thread, &attr, messageListener, NULL) != 0) {
+    perror("Failed to create listener thread");
+    exit(EXIT_FAILURE);
+}
+
+// Destroy thread attributes object
+pthread_attr_destroy(&attr);
 
     while (1) {
 
@@ -122,27 +169,42 @@ int main(int argc, char **argv) {
 		// printf("sendmsg: you have to specify target user\n");
 		// if no message is specified, you should print the followingA
  		// printf("sendmsg: you have to enter a message\n");
-		char *token = strtok(NULL," ");
-		char *user= malloc(20);
-		strcpy(user, token);
-		if(token == NULL){
-			printf("sendmsg: you have to specify target user\n");
-			continue;
-		}
-		char *message = malloc(256);
-		token=strtok(NULL, " ");
-		if(token == NULL){
-			printf("sendmsg: you have to enter a message\n");
-			continue;
-		}
-		strcat(message, token);
-		token = strtok(NULL, " ");
-		while(token != NULL){
-			strcat(message, " ");
-			strcat(message, token);
-			token = strtok(NULL, " ");
-		}
-		sendmsg(uName, user, message);
+		// Get the target user
+char *token = strtok(NULL, " ");
+if (token == NULL) {
+    printf("sendmsg: you have to specify target user\n");
+    continue;
+}
+
+// Copy the user name to a local variable
+char user[20] = "";  // Fixed-size buffer
+strncpy(user, token, sizeof(user) - 1);  // Ensure null termination
+
+// Get the message
+token = strtok(NULL, " ");
+if (token == NULL) {
+    printf("sendmsg: you have to enter a message\n");
+    continue;
+}
+
+// Construct the full message
+char message[256] = "";  // Fixed-size buffer
+strncpy(message, token, sizeof(message) - 1);
+token = strtok(NULL, " ");
+while (token != NULL) {
+    // Check if appending this token will overflow the buffer
+    if (strlen(message) + strlen(token) + 2 >= sizeof(message)) {
+        printf("sendmsg: message too long\n");
+        break;
+    }
+    strcat(message, " ");
+    strcat(message, token);
+    token = strtok(NULL, " ");
+}
+
+// Send the message
+sendmsg(uName, user, message);
+
 
 		continue;
 	}
