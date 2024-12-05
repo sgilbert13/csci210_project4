@@ -60,12 +60,24 @@ void* messageListener(void *arg) {
 	// following format
 	// Incoming message from [source]: [message]
 	// put an end of line at the end of the message
-	int user = open(uName, O_RDONLY);
-	struct message msg;
-	while(1){
-		ssize_t bytesRead = read(user, &msg, sizeof(msg));
-		if(bytesRead > 0){
-			printf("Incoming message from %s: %s\n", msg.source, msg.msg);
+		while (1) {
+		struct message msg; // Declare the message structure inside the loop
+		int user = open(uName, O_RDONLY); // Open the user's FIFO at the start of each iteration
+		if (user == -1) {
+			perror("Error opening FIFO");
+			break;
+		}
+		
+		ssize_t bytesRead = read(user, &msg, sizeof(msg)); // Read from the FIFO
+		close(user); // Close the FIFO after reading to release the resource
+
+		if (bytesRead > 0) {
+			printf("Incoming message from %s: %s\n", msg.source, msg.msg); // Print the message
+		} else if (bytesRead == 0) {
+			continue; // Handle end of file (EOF) without breaking the loop
+		} else {
+			perror("Error reading from FIFO"); // Handle read errors
+			break;
 		}
 	}
 
