@@ -60,27 +60,14 @@ void* messageListener(void *arg) {
 	// following format
 	// Incoming message from [source]: [message]
 	// put an end of line at the end of the message
-	void* messageListener(void *arg) {
-    // Open the user's FIFO for reading
-    int user = open(uName, O_RDONLY);
-    if (user < 0) {
-        perror("Error opening FIFO");
-        pthread_exit((void*)1);
-    }
-
-    struct message msg;
-    while (1) {
-        // Read a message from the FIFO
-        ssize_t bytesRead = read(user, &msg, sizeof(msg));
-        
-        // Check if the read operation was successful and the message is not empty
-        if (bytesRead > 0 && strlen(msg.source) > 0 && strlen(msg.msg) > 0) {
-            printf("Incoming message from %s: %s\n", msg.source, msg.msg);
-        }
-    }
-
-    // Close the FIFO before exiting the thread
-    close(user);
+	int user = open(uName, O_RDONLY);
+	struct message msg;
+	while(1){
+		ssize_t bytesRead = read(user, &msg, sizeof(msg));
+		if(bytesRead > 0){
+			printf("Incoming message from %s: %s\n", msg.source, msg.msg);
+		}
+	}
 
 	pthread_exit((void*)0);
 }
@@ -113,9 +100,10 @@ int main(int argc, char **argv) {
 
     // TODO:
     // create the message listener thread
-	pthread_t listener_thread;
-	pthread_create(&listener_thread, NULL, messageListener, NULL);
-
+	if (pthread_create(&listener_thread, NULL, messageListener, NULL) != 0) {
+    perror("Failed to create message listener thread");
+    exit(EXIT_FAILURE);
+}
     while (1) {
 
 	fprintf(stderr,"rsh>");
