@@ -60,12 +60,12 @@ void* messageListener(void *arg) {
 	// following format
 	// Incoming message from [source]: [message]
 	// put an end of line at the end of the message
-	int user = open(uName, O_RDONLY);
 	struct message msg;
+    int user = open(uName, O_RDONLY);
 	while(1){
 		ssize_t bytesRead = read(user, &msg, sizeof(msg));
 		if(bytesRead > 0){
-			printf("Incoming message from %s: %s\n", msg.source, msg.msg);
+			printf("Incoming message from %s: %s\n", msg.msg, msg.source );
 		}
 	}
 
