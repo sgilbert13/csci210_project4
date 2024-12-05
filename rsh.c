@@ -65,7 +65,7 @@ void* messageListener(void *arg) {
 	while(1){
 		ssize_t bytesRead = read(user, &msg, sizeof(msg));
 		if(bytesRead > 0){
-			printf("Incoming message from %s: %s\n", msg.msg, msg.source );
+			printf("Incoming message from %s: %s\n", msg.source,msg.msg  );
 		}
 	}
 
