@@ -100,10 +100,9 @@ int main(int argc, char **argv) {
 
     // TODO:
     // create the message listener thread
-	if (pthread_create(&listener_thread, NULL, messageListener, NULL) != 0) {
-    perror("Failed to create message listener thread");
-    exit(EXIT_FAILURE);
-}
+	pthread_t listener_thread;
+	pthread_create(&listener_thread, NULL, messageListener, NULL);
+
     while (1) {
 
 	fprintf(stderr,"rsh>");
@@ -137,27 +136,29 @@ int main(int argc, char **argv) {
 		// printf("sendmsg: you have to specify target user\n");
 		// if no message is specified, you should print the followingA
  		// printf("sendmsg: you have to enter a message\n");
-		char *token = strtok(NULL," ");
-		char *user= malloc(20);
-		strcpy(user, token);
-		if(token == NULL){
-			printf("sendmsg: you have to specify target user\n");
-			continue;
-		}
-		char *message = malloc(256);
-		token=strtok(NULL, " ");
-		if(token == NULL){
-			printf("sendmsg: you have to enter a message\n");
-			continue;
-		}
-		strcat(message, token);
-		token = strtok(NULL, " ");
-		while(token != NULL){
-			strcat(message, " ");
-			strcat(message, token);
-			token = strtok(NULL, " ");
-		}
-		sendmsg(uName, user, message);
+		char *token = strtok(NULL, " ");
+if (token == NULL) {
+    printf("sendmsg: you have to specify target user\n");
+    continue;
+}
+char *user = malloc(20);
+strcpy(user, token);
+
+token = strtok(NULL, " ");
+if (token == NULL) {
+    printf("sendmsg: you have to enter a message\n");
+    free(user); // Free memory to avoid a memory leak
+    continue;
+}
+char *message = malloc(256);
+strcpy(message, token);
+
+while ((token = strtok(NULL, " ")) != NULL) {
+    strcat(message, " ");
+    strcat(message, token);
+}
+
+sendmsg(uName, user, message);
 
 		continue;
 	}
